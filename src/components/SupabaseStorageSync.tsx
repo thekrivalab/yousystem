@@ -40,8 +40,8 @@ export function SupabaseStorageSync() {
   const [supabase] = useState(() => createClient());
   const activeUserIdRef = useRef<string | null>(null);
   const lastSerializedRef = useRef<string>('');
-  const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const flushTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const saveTimerRef = useRef<number | null>(null);
+  const flushTimerRef = useRef<number | null>(null);
   const onlineRef = useRef(typeof navigator !== 'undefined' ? navigator.onLine : true);
 
   useEffect(() => {
