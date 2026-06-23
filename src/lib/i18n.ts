@@ -76,7 +76,7 @@ export const translations = {
       connectedAccounts: 'Connected Accounts',
       noExternalAccounts: 'No external accounts connected',
       storage: 'Storage',
-      storageDesc: 'All your data is stored locally in your browser via localStorage. No data is sent to any server.',
+      storageDesc: 'Data is stored locally and synced to your private Supabase cloud when signed in. Sensitive fields can be encrypted with your vault passphrase.',
       exportData: 'Export Data',
       exportDataDesc: 'Download all your YouSystem data as JSON',
       importData: 'Import Data',
@@ -234,7 +234,8 @@ export const translations = {
       goal: 'Milestone',
       experience: 'Experience',
       quote: 'Quote',
-      material: 'Material',
+      object: 'Object',
+      image: 'Image',
       all: 'All',
       emptyDesc: 'Add destinations, milestones, experiences, or quotes that inspire you.',
     },
@@ -405,7 +406,7 @@ export const translations = {
       connectedAccounts: 'Contas conectadas',
       noExternalAccounts: 'Nenhuma conta externa conectada',
       storage: 'Armazenamento',
-      storageDesc: 'Todos os seus dados são armazenados localmente no navegador. Nenhum dado é enviado a servidores.',
+      storageDesc: 'Dados locais no navegador e sincronizados na nuvem Supabase ao entrar. Campos sensíveis podem ser criptografados com a senha do vault.',
       exportData: 'Exportar Dados',
       exportDataDesc: 'Baixar todos os dados do YouSystem como JSON',
       importData: 'Importar Dados',
@@ -559,7 +560,8 @@ export const translations = {
       goal: 'Conquista',
       experience: 'Experiência',
       quote: 'Citação',
-      material: 'Material',
+      object: 'Objeto',
+      image: 'Imagem',
       all: 'Todos',
       emptyDesc: 'Adicione destinos, conquistas, experiências ou citações que inspiram.',
     },
@@ -730,7 +732,7 @@ export const translations = {
       connectedAccounts: 'Cuentas conectadas',
       noExternalAccounts: 'No hay cuentas externas conectadas',
       storage: 'Almacenamiento',
-      storageDesc: 'Todos sus datos se almacenan localmente en su navegador. No se envían datos a ningún servidor.',
+      storageDesc: 'Datos locales en el navegador y sincronizados en la nube Supabase al iniciar sesión. Campos sensibles pueden cifrarse con la contraseña del vault.',
       exportData: 'Exportar Datos',
       exportDataDesc: 'Descargar todos los datos de YouSystem como JSON',
       importData: 'Importar Datos',
@@ -884,7 +886,8 @@ export const translations = {
       goal: 'Logro',
       experience: 'Experiencia',
       quote: 'Cita',
-      material: 'Material',
+      object: 'Objeto',
+      image: 'Imagen',
       all: 'Todos',
       emptyDesc: 'Agrega destinos, logros, experiencias o citas.',
     },
@@ -982,8 +985,14 @@ export const translations = {
       weeklyProgress: 'Progreso Semanal',
     }
   },
-} satisfies Record<Locale, typeof translations['en']>;
+} as const;
 
-export function t(locale: Locale, section: keyof typeof translations['en'], key: string): string {
-  return (translations[locale]?.[section] as any)?.[key] ?? (translations['en'][section] as any)[key] ?? key;
+export type TranslationSection = keyof typeof translations.en;
+
+export function t(locale: Locale, section: TranslationSection, key: string): string {
+  const sectionData = translations[locale]?.[section] ?? translations.en[section];
+  const value = sectionData[key as keyof typeof sectionData];
+  if (typeof value === 'string') return value;
+  const fallback = translations.en[section][key as keyof typeof translations.en[typeof section]];
+  return typeof fallback === 'string' ? fallback : key;
 }

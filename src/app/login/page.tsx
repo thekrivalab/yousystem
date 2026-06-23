@@ -1,16 +1,17 @@
 "use client";
 
 import { useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { AuthForm } from '@/components/AuthForm';
-import { useAuthStore } from '@/lib/auth-store';
 import { useLifeOSStore } from '@/lib/store';
-import { readStorageSnapshot, saveSnapshotToSupabase } from '@/lib/storage-snapshot';
+import { ensureLocalStorageForUser } from '@/lib/auth-storage';
+import { unlockVaultFromPassword } from '@/lib/storage-snapshot';
 import { createClient } from '@/utils/supabase/client';
+import { sanitizeRedirectPath } from '@/lib/sanitize-redirect';
 
 export default function LoginPage() {
   const router = useRouter();
-  const syncSessionUser = useAuthStore((state) => state.syncSessionUser);
+  const searchParams = useSearchParams();
   const updateUser = useLifeOSStore((state) => state.updateUser);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -18,14 +19,15 @@ export default function LoginPage() {
 
   useEffect(() => {
     const checkSession = async () => {
-      const { data } = await supabase.auth.getSession();
-      if (data.session) {
-        router.replace('/home');
+      const { data, error: userError } = await supabase.auth.getUser();
+      if (!userError && data.user) {
+        const next = sanitizeRedirectPath(searchParams.get('next'));
+        router.replace(next);
       }
     };
 
     void checkSession();
-  }, [router, supabase]);
+  }, [router, searchParams, supabase]);
 
   const handleLogin = async ({ email, password }: { name: string; email: string; password: string }) => {
     setLoading(true);
@@ -42,20 +44,15 @@ export default function LoginPage() {
         return;
       }
 
-      const user = data.user;
-      if (!user) {
+      const { data: userData, error: userError } = await supabase.auth.getUser();
+      const user = userData.user;
+      if (userError || !user) {
         setError('Não foi possível entrar.');
         return;
       }
 
-      syncSessionUser({
-        id: user.id,
-        email: user.email ?? email,
-        name: user.user_metadata?.full_name || user.user_metadata?.name || email.split('@')[0] || 'User',
-        timezone: user.user_metadata?.timezone,
-        avatarUrl: user.user_metadata?.avatar_url ?? null,
-        provider: user.app_metadata?.provider === 'google' ? 'google' : 'supabase',
-      });
+      await ensureLocalStorageForUser(user.id);
+      await unlockVaultFromPassword(password, user.id);
 
       updateUser({
         id: user.id,
@@ -64,10 +61,8 @@ export default function LoginPage() {
         avatarUrl: user.user_metadata?.avatar_url ?? undefined,
       });
 
-      const snapshot = readStorageSnapshot();
-      await saveSnapshotToSupabase(supabase, user.id, snapshot);
-
-      router.replace('/home');
+      const next = sanitizeRedirectPath(searchParams.get('next'));
+      router.replace(next);
     } finally {
       setLoading(false);
     }
@@ -78,10 +73,11 @@ export default function LoginPage() {
     setError(null);
 
     try {
+      const next = sanitizeRedirectPath(searchParams.get('next'));
       const { error: signInError } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
-          redirectTo: `${window.location.origin}/auth/callback`,
+          redirectTo: `${window.location.origin}/auth/callback?next=${encodeURIComponent(next)}`,
           queryParams: {
             prompt: 'select_account',
           },

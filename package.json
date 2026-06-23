@@ -6,7 +6,15 @@
     "dev": "next dev --webpack",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:e2e": "NEXT_PUBLIC_E2E_TEST=1 E2E_TEST_MODE=1 npm run build && playwright test",
+    "test:e2e:quick": "playwright test",
+    "test:e2e:ui": "playwright test --ui",
+    "db:verify": "node scripts/verify-supabase-schema.mjs",
+    "analyze:bundle": "node scripts/analyze-bundle.mjs"
   },
   "dependencies": {
     "@supabase/ssr": "^0.12.0",
@@ -16,25 +24,25 @@
     "framer-motion": "^12.40.0",
     "leaflet": "^1.9.4",
     "lucide-react": "^1.21.0",
-    "mapbox-gl": "^3.25.0",
     "next": "16.2.9",
     "react": "19.2.4",
     "react-dom": "19.2.4",
     "react-leaflet": "^5.0.0",
-    "react-map-gl": "^8.1.1",
     "tailwind-merge": "^3.6.0",
     "zustand": "^5.0.14"
   },
   "devDependencies": {
+    "@playwright/test": "^1.52.0",
     "@tailwindcss/postcss": "^4",
     "@types/leaflet": "^1.9.21",
-    "@types/mapbox-gl": "^3.4.1",
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
+    "@vitest/coverage-v8": "^4.1.9",
     "eslint": "^9",
     "eslint-config-next": "16.2.9",
     "tailwindcss": "^4",
-    "typescript": "^5"
+    "typescript": "^5",
+    "vitest": "^4.1.9"
   }
 }

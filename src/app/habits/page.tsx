@@ -44,7 +44,7 @@ export default function HabitsPage() {
     if (editingHabitId) {
       updateHabit(editingHabitId, { name, icon, frequency, xpPerCompletion: xp });
     } else {
-      addHabit({ name, icon, frequency, category: 'Personal', xpPerCompletion: xp, color: '#6366f1', tags: [] });
+      addHabit({ name, icon, frequency, category: 'Personal', xpPerCompletion: xp, color: '#6366f1' });
     }
     resetForm();
     setShowModal(false);

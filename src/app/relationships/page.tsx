@@ -98,7 +98,7 @@ export default function RelationshipsPage() {
             const days = person.lastInteraction ? daysSince(person.lastInteraction) : 999;
             const overdue = (person.contactFrequency === 'weekly' && days > 7) ||
                             (person.contactFrequency === 'monthly' && days > 30) ||
-                            (person.contactFrequency === 'quarterly' && days > 90);
+                            (person.contactFrequency === 'occasionally' && days > 90);
             return (
               <div key={person.id} className={`ui-card flex flex-col p-6 relative group transition-colors ${overdue ? 'ring-rose-500/30 hover:ring-rose-500/60' : 'hover:ring-[var(--accent)]/30'}`}>
                 <div className={`absolute top-0 left-1/2 -translate-x-1/2 w-1/3 h-0.5 opacity-0 group-hover:opacity-100 transition-opacity rounded-full ${overdue ? 'bg-gradient-to-r from-transparent via-rose-500 to-transparent' : 'bg-gradient-to-r from-transparent via-[var(--accent)] to-transparent'}`} />

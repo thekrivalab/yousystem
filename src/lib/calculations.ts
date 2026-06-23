@@ -35,7 +35,7 @@ export function safeAverage(values: unknown[], fallback = 0): number {
 }
 
 export function safeSum(values: unknown[], fallback = 0): number {
-  const total = values.reduce((acc, value) => acc + safeNumber(value, 0), 0);
+  const total = values.reduce<number>((acc, value) => acc + safeNumber(value, 0), 0);
   return Number.isFinite(total) ? total : fallback;
 }
 

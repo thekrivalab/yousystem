@@ -3,10 +3,11 @@ import { persist } from 'zustand/middleware';
 import { computeLifeSummary } from '@/lib/services/life-summary';
 import { safePercentage } from '@/lib/calculations';
 import { getLocalDateString } from '@/lib/date';
+import { syncAllHabitsDailyState, syncHabitDailyState } from '@/lib/habit-daily';
 import { 
-  Goal, Habit, FinancialGoal, Transaction, Book, Course, 
+  Goal, GoalInput, Habit, FinancialGoal, Transaction, Book, Course, 
   Language, HealthEntry, Project, Memory, Relationship, 
-  Achievement, DreamItem, UserProfile, PlanningEvent, PersonalDocument
+  Achievement, AchievementInput, DreamItem, UserProfile, PlanningEvent, PersonalDocument
 } from './types';
 import { BucketListItem } from './types';
 
@@ -52,7 +53,7 @@ interface LifeOSState {
   recalculateLifeScore: () => void;
   
   // Goals Actions
-  addGoal: (goal: Omit<Goal, 'id' | 'createdAt'>) => void;
+  addGoal: (goal: GoalInput) => void;
   updateGoal: (id: string, updates: Partial<Goal>) => void;
   updateGoalProgress: (id: string, progress: number) => void;
   updateGoalStatus: (id: string, status: Goal['status']) => void;
@@ -61,6 +62,7 @@ interface LifeOSState {
   addHabit: (habit: Omit<Habit, 'id' | 'streak' | 'longestStreak' | 'completedToday' | 'successRate' | 'completionHistory' | 'createdAt'>) => void;
   updateHabit: (id: string, updates: Partial<Habit>) => void;
   toggleHabit: (id: string) => void;
+  refreshDailyHabits: () => void;
 
   // Finance Actions
   addTransaction: (tx: Omit<Transaction, 'id' | 'date'>) => void;
@@ -118,7 +120,7 @@ interface LifeOSState {
   removeDocument: (id: string) => void;
 
   // Achievements Actions
-  addAchievement: (achievement: Omit<Achievement, 'id' | 'isUnlocked'>) => void;
+  addAchievement: (achievement: AchievementInput) => void;
   updateAchievement: (id: string, updates: Partial<Achievement>) => void;
   toggleAchievement: (id: string) => void;
 
@@ -276,48 +278,40 @@ export const useLifeOSStore = create<LifeOSState>()(
 
       toggleHabit: (id) => {
         const todayStr = getLocalDateString();
+        const previous = get().habits.find((h) => h.id === id);
+        const wasCompleted = previous?.completionHistory?.includes(todayStr) ?? false;
+
         set((state) => ({
-          habits: state.habits.map(h => {
-            if (h.id === id) {
-              const completedToday = !h.completedToday;
-              const streak = completedToday ? h.streak + 1 : Math.max(0, h.streak - 1);
-              const longestStreak = Math.max(h.longestStreak, streak);
-              
-              const history = new Set(h.completionHistory || []);
-              if (completedToday) {
-                history.add(todayStr);
-              } else {
-                history.delete(todayStr);
-              }
-              const newHistory = Array.from(history);
+          habits: state.habits.map((h) => {
+            if (h.id !== id) return h;
 
-              const now = new Date();
-              // Parse createdAt or fallback to today
-              const createdDate = new Date(h.createdAt || todayStr);
-              
-              const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-              const createdStart = new Date(createdDate.getFullYear(), createdDate.getMonth(), createdDate.getDate());
-              
-              // Ensure we divide by at least 1 day, and count the creation day as day 1
-              const daysSinceCreation = Math.max(1, Math.floor((todayStart.getTime() - createdStart.getTime()) / (1000 * 60 * 60 * 24)) + 1);
-
-              return {
-                ...h,
-                completedToday,
-                streak,
-                longestStreak,
-                completionHistory: newHistory,
-                successRate: safePercentage(newHistory.length, daysSinceCreation)
-              };
+            const history = new Set(h.completionHistory || []);
+            if (wasCompleted) {
+              history.delete(todayStr);
+            } else {
+              history.add(todayStr);
             }
-            return h;
-          })
+
+            return syncHabitDailyState(
+              { ...h, completionHistory: Array.from(history) },
+              todayStr
+            );
+          }),
         }));
-        const targetHabit = get().habits.find(h => h.id === id);
-        if (targetHabit?.completedToday) {
+
+        const targetHabit = get().habits.find((h) => h.id === id);
+        if (!wasCompleted && targetHabit?.completedToday) {
           get().addXp(targetHabit.xpPerCompletion);
+        } else if (wasCompleted && targetHabit && !targetHabit.completedToday) {
+          get().addXp(-targetHabit.xpPerCompletion);
         }
         get().recalculateLifeScore();
+      },
+
+      refreshDailyHabits: () => {
+        set((state) => ({
+          habits: syncAllHabitsDailyState(state.habits),
+        }));
       },
 
       // Finance Actions
@@ -693,6 +687,11 @@ export const useLifeOSStore = create<LifeOSState>()(
     }),
     {
       name: 'life-os-storage',
+      onRehydrateStorage: () => (state) => {
+        if (state) {
+          state.habits = syncAllHabitsDailyState(state.habits);
+        }
+      },
       partialize: (state) => ({
         user: state.user,
         goals: state.goals,

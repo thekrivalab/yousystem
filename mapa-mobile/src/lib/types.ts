@@ -1,14 +1,20 @@
 // ─── GOALS ────────────────────────────────────────────────────────────────────
-export type GoalType = 'annual' | 'quarterly' | 'monthly' | 'weekly' | 'longterm';
+export const GOAL_TYPES = ['annual', 'quarterly', 'monthly', 'weekly', 'longterm'] as const;
+export type GoalType = (typeof GOAL_TYPES)[number];
+
 export type GoalStatus = 'not_started' | 'in_progress' | 'completed' | 'paused';
-export type GoalCategory =
-  | 'health'
-  | 'finance'
-  | 'travel'
-  | 'learning'
-  | 'projects'
-  | 'relationships'
-  | 'personal';
+
+export const GOAL_CATEGORIES = [
+  'health',
+  'finance',
+  'travel',
+  'learning',
+  'projects',
+  'relationships',
+  'personal',
+] as const;
+
+export type GoalCategory = (typeof GOAL_CATEGORIES)[number];
 
 export interface Goal {
   id: string;
@@ -23,6 +29,8 @@ export interface Goal {
   xpReward: number;
   createdAt: string;
 }
+
+export type GoalInput = Omit<Goal, 'id' | 'createdAt'>;
 
 // ─── HABITS ───────────────────────────────────────────────────────────────────
 export type HabitFrequency = 'daily' | 'weekly' | 'monthly';
@@ -168,13 +176,17 @@ export interface Relationship {
 }
 
 // ─── ACHIEVEMENTS ─────────────────────────────────────────────────────────────
-export type AchievementCategory =
-  | 'travel'
-  | 'habits'
-  | 'finance'
-  | 'learning'
-  | 'health'
-  | 'projects';
+export const ACHIEVEMENT_CATEGORIES = [
+  'general',
+  'health',
+  'learning',
+  'travel',
+  'finance',
+  'habits',
+  'projects',
+] as const;
+
+export type AchievementCategory = (typeof ACHIEVEMENT_CATEGORIES)[number];
 
 export interface Achievement {
   id: string;
@@ -186,6 +198,8 @@ export interface Achievement {
   xpReward: number;
   isUnlocked: boolean;
 }
+
+export type AchievementInput = Omit<Achievement, 'id' | 'isUnlocked'>;
 
 // ─── DREAM BOARD ──────────────────────────────────────────────────────────────
 export type DreamItemType =

@@ -33,7 +33,7 @@ export function createLocalDatabase(namespace = 'life-os'): DatabaseClient {
   const key = (table: string) => `${namespace}:${table}`;
 
   return {
-    get<T>(table) {
+    get<T>(table: string): T[] {
       try {
         const raw = read(key(table));
         return raw ? (JSON.parse(raw) as T[]) : [];
@@ -41,10 +41,10 @@ export function createLocalDatabase(namespace = 'life-os'): DatabaseClient {
         return [];
       }
     },
-    set<T>(table, value) {
+    set<T>(table: string, value: T[]): void {
       write(key(table), JSON.stringify(value));
     },
-    clear(table) {
+    clear(table: string): void {
       remove(key(table));
     },
   };

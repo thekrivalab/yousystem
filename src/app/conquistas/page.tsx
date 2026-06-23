@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { Trophy, Plus, Flame, ChevronUp, Trash2, Pencil } from 'lucide-react';
 import { useLifeOSStore } from '@/lib/store';
-import { Goal } from '@/lib/types';
+import { Goal, GoalCategory, GoalType, GOAL_CATEGORIES, GOAL_TYPES } from '@/lib/types';
 import { useThemeStore } from '@/lib/theme-store';
 import { t } from '@/lib/i18n';
 import { getLocalDateString } from '@/lib/date';
@@ -28,13 +28,13 @@ export default function ConquistasPage() {
 
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
-  const [type, setType] = useState<Goal['type']>('annual');
-  const [category, setCategory] = useState('Personal');
+  const [type, setType] = useState<GoalType>('annual');
+  const [category, setCategory] = useState<GoalCategory>('personal');
   const [deadline, setDeadline] = useState('');
   const [xpReward, setXpReward] = useState(200);
 
   const resetForm = () => {
-    setTitle(''); setDescription(''); setType('annual'); setCategory('Personal'); setDeadline(''); setXpReward(200); setEditingGoalId(null);
+    setTitle(''); setDescription(''); setType('annual'); setCategory('personal'); setDeadline(''); setXpReward(200); setEditingGoalId(null);
   };
 
   const handleEditClick = (e: React.MouseEvent, goal: Goal) => {
@@ -61,6 +61,7 @@ export default function ConquistasPage() {
         category,
         status: 'not_started',
         progress: 0,
+        priority: 5,
         deadline: deadline || getLocalDateString(new Date(new Date().getFullYear(), 11, 31)),
         xpReward,
       });
@@ -188,10 +189,30 @@ export default function ConquistasPage() {
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
                   <label className="ui-label">{t(locale, 'common', 'type')}</label>
-                  <select value={type} onChange={(e: any) => setType(e.target.value)} className="ui-input">
-                    <option value="annual">{locale === 'pt' ? 'Anual' : locale === 'es' ? 'Anual' : 'Annual'}</option>
-                    <option value="quarterly">{locale === 'pt' ? 'Trimestral' : locale === 'es' ? 'Trimestral' : 'Quarterly'}</option>
-                    <option value="longterm">{locale === 'pt' ? 'Longo prazo' : locale === 'es' ? 'Largo plazo' : 'Long term'}</option>
+                  <select value={type} onChange={e => setType(e.target.value as GoalType)} className="ui-input">
+                    {GOAL_TYPES.filter(t => ['annual', 'quarterly', 'longterm'].includes(t)).map((goalType) => (
+                      <option key={goalType} value={goalType}>
+                        {goalType === 'annual'
+                          ? (locale === 'pt' ? 'Anual' : locale === 'es' ? 'Anual' : 'Annual')
+                          : goalType === 'quarterly'
+                            ? (locale === 'pt' ? 'Trimestral' : locale === 'es' ? 'Trimestral' : 'Quarterly')
+                            : (locale === 'pt' ? 'Longo prazo' : locale === 'es' ? 'Largo plazo' : 'Long term')}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="ui-label">{t(locale, 'common', 'category')}</label>
+                  <select
+                    value={category}
+                    onChange={e => setCategory(e.target.value as GoalCategory)}
+                    className="ui-input"
+                  >
+                    {GOAL_CATEGORIES.map((cat) => (
+                      <option key={cat} value={cat}>
+                        {cat.charAt(0).toUpperCase() + cat.slice(1)}
+                      </option>
+                    ))}
                   </select>
                 </div>
                 <div>

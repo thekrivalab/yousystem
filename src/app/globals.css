@@ -355,17 +355,3 @@ html.no-animations * {
   animation-duration: 0ms !important;
   transition-duration: 0ms !important;
 }
-
-/* ─── Mapbox overrides ──────────────────────────────────────────── */
-.mapboxgl-popup-content {
-  background: var(--bg-base) !important;
-  color: var(--fg-base) !important;
-  border: 1px solid var(--border);
-  border-radius: 12px !important;
-  padding: 12px !important;
-  box-shadow: 0 4px 20px rgba(0,0,0,0.5) !important;
-}
-.mapboxgl-popup-anchor-bottom .mapboxgl-popup-tip {
-  border-top-color: var(--bg-base) !important;
-}
-.mapboxgl-popup-close-button { color: var(--fg-muted) !important; }

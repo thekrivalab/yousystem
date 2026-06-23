@@ -3,11 +3,24 @@
 import { Trophy, Lock, Star, Plus, X, Trash2, Pencil } from 'lucide-react';
 import { useState } from 'react';
 import { useLifeOSStore } from '@/lib/store';
-import { Achievement } from '@/lib/types';
+import {
+  Achievement,
+  AchievementCategory,
+  AchievementInput,
+  ACHIEVEMENT_CATEGORIES,
+} from '@/lib/types';
 import { useThemeStore } from '@/lib/theme-store';
 import { IconPicker } from '@/components/IconPicker';
 
 const ACHIEVEMENT_ICON_OPTIONS = ['🏆', '🥇', '🎖️', '⭐', '🌟', '🎉', '🚀', '💎', '🧠', '🔥', '👑', '🏅', '🌈', '💪'];
+
+const DEFAULT_ACHIEVEMENT: AchievementInput = {
+  title: '',
+  description: '',
+  icon: '🏆',
+  category: 'general',
+  xpReward: 100,
+};
 
 export default function AchievementsPage() {
   const { locale } = useThemeStore();
@@ -23,22 +36,10 @@ export default function AchievementsPage() {
   const [showModal, setShowModal] = useState(false);
   const [editingAchievementId, setEditingAchievementId] = useState<string | null>(null);
 
-  const [newAchievement, setNewAchievement] = useState({
-    title: '',
-    description: '',
-    icon: '🏆',
-    category: 'general',
-    xpReward: 100
-  });
+  const [newAchievement, setNewAchievement] = useState<AchievementInput>(DEFAULT_ACHIEVEMENT);
 
   const resetForm = () => {
-    setNewAchievement({
-      title: '',
-      description: '',
-      icon: '🏆',
-      category: 'general',
-      xpReward: 100
-    });
+    setNewAchievement(DEFAULT_ACHIEVEMENT);
     setEditingAchievementId(null);
   };
 
@@ -218,15 +219,19 @@ export default function AchievementsPage() {
                   <label className="ui-label">Category</label>
                   <select 
                     value={newAchievement.category}
-                    onChange={e => setNewAchievement({...newAchievement, category: e.target.value})}
+                    onChange={e =>
+                      setNewAchievement({
+                        ...newAchievement,
+                        category: e.target.value as AchievementCategory,
+                      })
+                    }
                     className="ui-input"
                   >
-                    <option value="general">General</option>
-                    <option value="health">Health</option>
-                    <option value="learning">Learning</option>
-                    <option value="travel">Travel</option>
-                    <option value="finance">Finance</option>
-                    <option value="habits">Habits</option>
+                    {ACHIEVEMENT_CATEGORIES.map((cat) => (
+                      <option key={cat} value={cat}>
+                        {cat.charAt(0).toUpperCase() + cat.slice(1)}
+                      </option>
+                    ))}
                   </select>
                 </div>
               </div>

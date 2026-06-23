@@ -15,6 +15,8 @@ import {
 } from 'lucide-react';
 import { useRoutineStore } from '@/lib/routine-store';
 import { useLifeOSStore } from '@/lib/store';
+import { isHabitCompletedOnDate } from '@/lib/habit-daily';
+import { getLocalDateString } from '@/lib/date';
 import { useThemeStore } from '@/lib/theme-store';
 import { t } from '@/lib/i18n';
 import type { RoutineBlock } from '@/lib/types';
@@ -158,7 +160,8 @@ export default function RoutinePage() {
   const dateLocale = locale === 'pt' ? 'pt-BR' : locale === 'es' ? 'es-ES' : 'en-US';
   const displayDate = new Date(`${selectedDate}T12:00:00`);
   const habitsToday = habits.filter((habit) => habit.frequency === 'daily');
-  const habitsDone = habitsToday.filter((habit) => habit.completedToday).length;
+  const isViewingToday = selectedDate === getLocalDateString();
+  const habitsDone = habitsToday.filter((habit) => isHabitCompletedOnDate(habit, selectedDate)).length;
   const dayTypeLabel = t(locale, 'routine', dayType);
 
   return (
@@ -245,28 +248,35 @@ export default function RoutinePage() {
                 {t(locale, 'common', 'empty')}
               </div>
             ) : (
-              habitsToday.map((habit) => (
+              habitsToday.map((habit) => {
+                const isDone = isHabitCompletedOnDate(habit, selectedDate);
+                return (
                 <button
                   key={habit.id}
-                  onClick={() => useLifeOSStore.getState().toggleHabit(habit.id)}
-                  className="flex items-center justify-between p-3 rounded-lg border transition-colors hover:brightness-110 group"
+                  onClick={() => {
+                    if (isViewingToday) {
+                      useLifeOSStore.getState().toggleHabit(habit.id);
+                    }
+                  }}
+                  disabled={!isViewingToday}
+                  className="flex items-center justify-between p-3 rounded-lg border transition-colors hover:brightness-110 group disabled:cursor-default disabled:hover:brightness-100"
                   style={{
-                    backgroundColor: habit.completedToday ? 'color-mix(in srgb, var(--fg-base) 8%, var(--bg-elevated))' : 'var(--bg-elevated)',
-                    borderColor: habit.completedToday ? 'color-mix(in srgb, var(--fg-base) 30%, transparent)' : 'var(--border)',
+                    backgroundColor: isDone ? 'color-mix(in srgb, var(--fg-base) 8%, var(--bg-elevated))' : 'var(--bg-elevated)',
+                    borderColor: isDone ? 'color-mix(in srgb, var(--fg-base) 30%, transparent)' : 'var(--border)',
                   }}
                 >
                   <div className="flex items-center gap-3">
                     <div
                       className="w-5 h-5 rounded flex items-center justify-center border transition-colors"
                       style={{
-                        backgroundColor: habit.completedToday ? 'var(--fg-base)' : 'transparent',
-                        borderColor: habit.completedToday ? 'var(--fg-base)' : 'var(--border)',
-                        color: habit.completedToday ? 'var(--bg-base)' : 'transparent',
+                        backgroundColor: isDone ? 'var(--fg-base)' : 'transparent',
+                        borderColor: isDone ? 'var(--fg-base)' : 'var(--border)',
+                        color: isDone ? 'var(--bg-base)' : 'transparent',
                       }}
                     >
-                      {habit.completedToday && <Check size={12} />}
+                      {isDone && <Check size={12} />}
                     </div>
-                    <span className={`text-sm font-medium ${habit.completedToday ? 'line-through' : ''}`} style={{ color: habit.completedToday ? 'var(--fg-muted)' : 'var(--fg-base)' }}>
+                    <span className={`text-sm font-medium ${isDone ? 'line-through' : ''}`} style={{ color: isDone ? 'var(--fg-muted)' : 'var(--fg-base)' }}>
                       {habit.icon} {habit.name}
                     </span>
                   </div>
@@ -274,7 +284,8 @@ export default function RoutinePage() {
                     🔥 {habit.streak}
                   </div>
                 </button>
-              ))
+              );
+              })
             )}
           </div>
           <p className="mt-2 text-xs" style={{ color: 'var(--fg-muted)' }}>

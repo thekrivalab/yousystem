@@ -7,18 +7,51 @@ import {
   Check, Moon, Sun, Monitor, Camera
 } from 'lucide-react';
 import { useLifeOSStore } from '@/lib/store';
-import { useAuthStore } from '@/lib/auth-store';
 import { getDeviceTimezone } from '@/components/AuthForm';
 import { useThemeStore } from '@/lib/theme-store';
 import { translations, type Locale } from '@/lib/i18n';
 import { useRouter } from 'next/navigation';
 import { useSearchParams } from 'next/navigation';
 import { createClient } from '@/utils/supabase/client';
-import { readStorageSnapshot, saveSnapshotToSupabase } from '@/lib/storage-snapshot';
+import {
+  ATLAS_MAPPING_KEY,
+  buildSnapshotMeta,
+  lockVault,
+  readStorageSnapshot,
+  saveSnapshotToSupabase,
+  unlockVaultFromPassphrase,
+  sealLocalLifeOSStorage,
+  rehydratePersistedStores,
+} from '@/lib/storage-snapshot';
+import { keyManager } from '@/lib/crypto/key-manager';
+import { validateImageUpload } from '@/lib/upload-validation';
+import {
+  createEncryptedBackup,
+  downloadBackup,
+  parseBackupFile,
+  restoreBackup,
+  BACKUP_VERSION,
+} from '@/lib/backup';
+import { listRecoverySnapshots, loadRecoverySnapshot } from '@/lib/sync-engine';
 
 type Tab = 'profile' | 'appearance' | 'data';
 
-const tabs: { id: Tab; label: string; icon: any }[] = [
+function SettingsToggle({ value, onChange }: { value: boolean; onChange: (v: boolean) => void }) {
+  return (
+    <button
+      type="button"
+      onClick={() => onChange(!value)}
+      className="relative w-11 h-6 rounded-full transition-colors"
+      style={{ backgroundColor: value ? 'var(--accent)' : 'var(--bg-elevated)' }}
+    >
+      <span
+        className={`absolute top-1 w-4 h-4 rounded-full bg-[var(--bg-base)] shadow transition-all ${value ? 'left-6' : 'left-1'}`}
+      />
+    </button>
+  );
+}
+
+const tabs: { id: Tab; label: string; icon: typeof User }[] = [
   { id: 'profile',    label: 'profile',    icon: User },
   { id: 'appearance', label: 'appearance', icon: Palette },
   { id: 'data',       label: 'data',       icon: Database },
@@ -27,9 +60,6 @@ const tabs: { id: Tab; label: string; icon: any }[] = [
 export default function SettingsPage() {
   const user = useLifeOSStore((s) => s.user);
   const updateUser = useLifeOSStore((s) => s.updateUser);
-  const updateAuthProfile = useAuthStore((s) => s.updateCurrentProfile);
-  const logoutAuth = useAuthStore((s) => s.logout);
-  const clearSessionUser = useAuthStore((s) => s.clearSessionUser);
   const router = useRouter();
   const [supabase] = useState(() => createClient());
   const searchParams = useSearchParams();
@@ -49,14 +79,53 @@ export default function SettingsPage() {
   const [timezone, setTimezone] = useState(() => user.timezone || getDeviceTimezone());
   const [avatarUrl, setAvatarUrl] = useState(user.avatarUrl || '');
   const avatarInputRef = useRef<HTMLInputElement>(null);
+  const importInputRef = useRef<HTMLInputElement>(null);
+  const [recoverySnapshots, setRecoverySnapshots] = useState<{ index: number; savedAt: string }[]>([]);
+  const [vaultPassphrase, setVaultPassphrase] = useState('');
+  const [vaultUnlocked, setVaultUnlocked] = useState(false);
+
+  useEffect(() => {
+    if (activeTab === 'data') {
+      setRecoverySnapshots(listRecoverySnapshots());
+      setVaultUnlocked(keyManager.hasKey());
+    }
+  }, [activeTab]);
+
+  const handleVaultUnlock = async () => {
+    const { data } = await supabase.auth.getUser();
+    const userId = data.user?.id;
+    if (!userId || vaultPassphrase.length < 8) {
+      alert(locale === 'pt' ? 'Senha deve ter pelo menos 8 caracteres.' : 'Passphrase must be at least 8 characters.');
+      return;
+    }
+
+    try {
+      await unlockVaultFromPassphrase(vaultPassphrase, userId);
+      await rehydratePersistedStores();
+      await sealLocalLifeOSStorage();
+      setVaultUnlocked(true);
+      setVaultPassphrase('');
+    } catch {
+      alert(locale === 'pt' ? 'Não foi possível desbloquear o vault.' : 'Could not unlock vault.');
+    }
+  };
+
+  const handleVaultLock = () => {
+    lockVault();
+    setVaultUnlocked(false);
+  };
 
   const handleAvatarChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    if (file.size > 800 * 1024) {
-      alert('Imagem muito grande. Use uma foto menor que 800KB.');
+
+    const validation = validateImageUpload(file);
+    if (!validation.ok) {
+      alert(validation.error);
+      e.target.value = '';
       return;
     }
+
     const reader = new FileReader();
     reader.onload = (ev) => {
       const dataUrl = ev.target?.result as string;
@@ -91,17 +160,13 @@ export default function SettingsPage() {
       bio,
       timezone,
     });
-    updateAuthProfile({
-      name: nextName,
-      bio,
-      timezone,
-    });
 
     const { data } = await supabase.auth.getUser();
     const userId = data.user?.id;
     if (userId) {
       const snapshot = readStorageSnapshot();
-      const { error: snapshotError } = await saveSnapshotToSupabase(supabase, userId, snapshot);
+      const meta = buildSnapshotMeta(snapshot);
+      const { error: snapshotError } = await saveSnapshotToSupabase(supabase, userId, snapshot, meta);
       if (snapshotError) {
         console.error('Failed to persist settings snapshot:', snapshotError.message);
       }
@@ -111,22 +176,73 @@ export default function SettingsPage() {
     setTimeout(() => setSaved(false), 2000);
   };
 
-  const handleExport = () => {
-    const state = localStorage.getItem('life-os-storage');
-    if (!state) return;
-    const blob = new Blob([state], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `yousystem-backup-${new Date().toISOString().split('T')[0]}.json`;
-    a.click();
-    URL.revokeObjectURL(url);
+  const handleExport = async () => {
+    const passphrase = window.prompt(
+      locale === 'pt'
+        ? 'Defina uma senha para criptografar o backup (guarde em local seguro):'
+        : 'Set a passphrase to encrypt the backup (store it safely):'
+    );
+    if (!passphrase || passphrase.length < 8) {
+      alert(locale === 'pt' ? 'Senha deve ter pelo menos 8 caracteres.' : 'Passphrase must be at least 8 characters.');
+      return;
+    }
+
+    const envelope = await createEncryptedBackup(passphrase);
+    downloadBackup(envelope);
+  };
+
+  const handleImport = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const content = await file.text();
+    const envelope = parseBackupFile(content);
+    if (!envelope) {
+      alert(locale === 'pt' ? 'Arquivo de backup inválido.' : 'Invalid backup file.');
+      e.target.value = '';
+      return;
+    }
+
+    let passphrase: string | undefined;
+    if (envelope.encrypted) {
+      passphrase = window.prompt(
+        locale === 'pt' ? 'Senha do backup criptografado:' : 'Encrypted backup passphrase:'
+      ) ?? undefined;
+    }
+
+    const result = await restoreBackup(envelope, { passphrase });
+    if (!result.ok) {
+      alert(result.error ?? 'Restore failed');
+      e.target.value = '';
+      return;
+    }
+
+    alert(locale === 'pt' ? 'Backup restaurado com sucesso!' : 'Backup restored successfully!');
+    setRecoverySnapshots(listRecoverySnapshots());
+    e.target.value = '';
+    window.location.reload();
+  };
+
+  const handleRestoreRecovery = async (index: number) => {
+    const confirmed = window.confirm(
+      locale === 'pt'
+        ? 'Restaurar este snapshot local? Dados atuais serão substituídos.'
+        : 'Restore this local snapshot? Current data will be replaced.'
+    );
+    if (!confirmed) return;
+
+    const snapshot = loadRecoverySnapshot(index);
+    if (!snapshot) return;
+
+    const { writeStorageSnapshot, rehydratePersistedStores } = await import('@/lib/storage-snapshot');
+    writeStorageSnapshot(snapshot);
+    await rehydratePersistedStores();
+    window.location.reload();
   };
 
   const handleLogout = async () => {
+    lockVault();
     await supabase.auth.signOut();
-    logoutAuth();
-    clearSessionUser();
     router.replace('/login');
   };
 
@@ -142,14 +258,12 @@ export default function SettingsPage() {
     }
 
     await supabase.auth.signOut();
-    logoutAuth();
-    clearSessionUser();
 
     const keysToRemove = [
       'life-os-storage',
-      'life-os-auth',
       'life-os-theme',
       'life-os-routine',
+      ATLAS_MAPPING_KEY,
       'atlas-countries',
     ];
 
@@ -169,16 +283,6 @@ export default function SettingsPage() {
 
     window.location.replace('/login');
   };
-
-  const Toggle = ({ value, onChange }: { value: boolean; onChange: (v: boolean) => void }) => (
-    <button type="button"
-      onClick={() => onChange(!value)}
-      className="relative w-11 h-6 rounded-full transition-colors"
-      style={{ backgroundColor: value ? 'var(--accent)' : 'var(--bg-elevated)' }}
-    >
-      <span className={`absolute top-1 w-4 h-4 rounded-full bg-[var(--bg-base)] shadow transition-all ${value ? 'left-6' : 'left-1'}`} />
-    </button>
-  );
 
   return (
     <div className="min-h-screen overflow-y-auto p-4 sm:p-6 lg:p-8" style={{ backgroundColor: 'var(--bg-base)' }}>
@@ -350,7 +454,7 @@ export default function SettingsPage() {
                         <p className="text-sm font-medium" style={{ color: 'var(--fg-base)' }}>{s.animations}</p>
                         <p className="text-xs" style={{ color: 'var(--fg-subtle)' }}>{s.animationsDesc}</p>
                       </div>
-                      <Toggle value={animations} onChange={setAnimations} />
+                      <SettingsToggle value={animations} onChange={setAnimations} />
                     </div>
                   </div>
                 </div>
@@ -362,6 +466,40 @@ export default function SettingsPage() {
               <>
                 <h2 className="text-lg font-semibold mb-6" style={{ color: 'var(--fg-base)' }}>{s.data}</h2>
                 <div className="space-y-4">
+                  <div className="p-4 ui-card space-y-3">
+                    <p className="text-sm font-semibold" style={{ color: 'var(--fg-base)' }}>
+                      {locale === 'pt' ? 'Vault de dados sensíveis' : 'Sensitive data vault'}
+                    </p>
+                    <p className="text-xs" style={{ color: 'var(--fg-muted)' }}>
+                      {locale === 'pt'
+                        ? 'Use a senha da conta (email) ou defina uma passphrase. Contas Google precisam definir uma passphrase aqui.'
+                        : 'Use your account password or set a vault passphrase. Google accounts must set a passphrase here.'}
+                    </p>
+                    {vaultUnlocked ? (
+                      <div className="flex items-center justify-between gap-3">
+                        <span className="text-xs text-emerald-500">
+                          {locale === 'pt' ? 'Vault desbloqueado nesta sessão' : 'Vault unlocked this session'}
+                        </span>
+                        <button type="button" onClick={handleVaultLock} className="ui-button-ghost text-xs">
+                          {locale === 'pt' ? 'Bloquear' : 'Lock'}
+                        </button>
+                      </div>
+                    ) : (
+                      <div className="flex flex-col sm:flex-row gap-2">
+                        <input
+                          type="password"
+                          value={vaultPassphrase}
+                          onChange={(e) => setVaultPassphrase(e.target.value)}
+                          className="ui-input flex-1"
+                          placeholder={locale === 'pt' ? 'Senha ou passphrase (8+)' : 'Password or passphrase (8+)'}
+                        />
+                        <button type="button" onClick={handleVaultUnlock} className="ui-button-primary shrink-0">
+                          {locale === 'pt' ? 'Desbloquear' : 'Unlock'}
+                        </button>
+                      </div>
+                    )}
+                  </div>
+
                   <div className="p-4 ui-card">
                     <p className="text-sm font-semibold mb-1" style={{ color: 'var(--fg-base)' }}>{s.storage}</p>
                     <p className="text-xs mb-3" style={{ color: 'var(--fg-muted)' }}>{s.storageDesc}</p>
@@ -377,11 +515,59 @@ export default function SettingsPage() {
                       <Download size={18} className="text-[var(--fg-base)]" />
                       <div className="text-left">
                         <p className="text-sm font-medium" style={{ color: 'var(--fg-base)' }}>{s.exportData}</p>
-                        <p className="text-xs" style={{ color: 'var(--fg-subtle)' }}>{s.exportDataDesc}</p>
+                        <p className="text-xs" style={{ color: 'var(--fg-subtle)' }}>
+                          {locale === 'pt'
+                            ? `Backup criptografado v${BACKUP_VERSION} (AES-256-GCM)`
+                            : `Encrypted backup v${BACKUP_VERSION} (AES-256-GCM)`}
+                        </p>
                       </div>
                     </div>
                     <ChevronRight size={16} style={{ color: 'var(--fg-subtle)' }} />
                   </button>
+
+                  <input
+                    ref={importInputRef}
+                    type="file"
+                    accept="application/json,.json"
+                    className="hidden"
+                    onChange={handleImport}
+                  />
+                  <button
+                    onClick={() => importInputRef.current?.click()}
+                    className="w-full flex items-center justify-between p-4 ui-card hover:brightness-110 transition-all group"
+                  >
+                    <div className="flex items-center gap-3">
+                      <Database size={18} className="text-[var(--fg-base)]" />
+                      <div className="text-left">
+                        <p className="text-sm font-medium" style={{ color: 'var(--fg-base)' }}>{s.importData}</p>
+                        <p className="text-xs" style={{ color: 'var(--fg-subtle)' }}>{s.importDataDesc}</p>
+                      </div>
+                    </div>
+                    <ChevronRight size={16} style={{ color: 'var(--fg-subtle)' }} />
+                  </button>
+
+                  {recoverySnapshots.length > 0 && (
+                    <div className="p-4 ui-card space-y-2">
+                      <p className="text-sm font-semibold" style={{ color: 'var(--fg-base)' }}>
+                        {locale === 'pt' ? 'Snapshots locais de recuperação' : 'Local recovery snapshots'}
+                      </p>
+                      {recoverySnapshots.map((entry) => (
+                        <button
+                          key={entry.index}
+                          onClick={() => handleRestoreRecovery(entry.index)}
+                          className="w-full flex items-center justify-between py-2 px-3 rounded-lg text-left hover:brightness-110"
+                          style={{ backgroundColor: 'var(--bg-elevated)' }}
+                        >
+                          <span className="text-xs" style={{ color: 'var(--fg-muted)' }}>
+                            {new Date(entry.savedAt).toLocaleString()}
+                          </span>
+                          <span className="text-xs font-medium" style={{ color: 'var(--accent)' }}>
+                            {locale === 'pt' ? 'Restaurar' : 'Restore'}
+                          </span>
+                        </button>
+                      ))}
+                    </div>
+                  )}
 
                   <div className="pt-4 mt-4" style={{ borderTop: '1px solid var(--border)' }}>
                     <button

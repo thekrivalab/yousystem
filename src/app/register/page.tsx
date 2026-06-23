@@ -3,14 +3,13 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { AuthForm, getDeviceTimezone } from '@/components/AuthForm';
-import { useAuthStore } from '@/lib/auth-store';
 import { useLifeOSStore } from '@/lib/store';
-import { readStorageSnapshot, saveSnapshotToSupabase } from '@/lib/storage-snapshot';
+import { ensureLocalStorageForUser } from '@/lib/auth-storage';
+import { unlockVaultFromPassword } from '@/lib/storage-snapshot';
 import { createClient } from '@/utils/supabase/client';
 
 export default function RegisterPage() {
   const router = useRouter();
-  const syncSessionUser = useAuthStore((state) => state.syncSessionUser);
   const updateUser = useLifeOSStore((state) => state.updateUser);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -18,8 +17,8 @@ export default function RegisterPage() {
 
   useEffect(() => {
     const checkSession = async () => {
-      const { data } = await supabase.auth.getSession();
-      if (data.session) {
+      const { data, error: userError } = await supabase.auth.getUser();
+      if (!userError && data.user) {
         router.replace('/home');
       }
     };
@@ -49,20 +48,15 @@ export default function RegisterPage() {
         return;
       }
 
-      const user = data.user;
-      if (!user) {
+      const { data: userData, error: userError } = await supabase.auth.getUser();
+      const user = userData.user ?? data.user;
+      if (userError || !user) {
         setError('Verifique seu e-mail para concluir o cadastro, ou desative confirmação de e-mail no Supabase para login imediato.');
         return;
       }
 
-      syncSessionUser({
-        id: user.id,
-        email: user.email ?? email,
-        name,
-        timezone: getDeviceTimezone(),
-        avatarUrl: user.user_metadata?.avatar_url ?? null,
-        provider: user.app_metadata?.provider === 'google' ? 'google' : 'supabase',
-      });
+      await ensureLocalStorageForUser(user.id);
+      await unlockVaultFromPassword(password, user.id);
 
       updateUser({
         id: user.id,
@@ -70,9 +64,6 @@ export default function RegisterPage() {
         timezone: getDeviceTimezone(),
         avatarUrl: user.user_metadata?.avatar_url ?? undefined,
       });
-
-      const snapshot = readStorageSnapshot();
-      await saveSnapshotToSupabase(supabase, user.id, snapshot);
 
       router.replace('/home');
     } finally {

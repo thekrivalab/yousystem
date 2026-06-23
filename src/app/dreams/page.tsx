@@ -6,6 +6,7 @@ import { useLifeOSStore } from '@/lib/store';
 import { DreamItem } from '@/lib/types';
 import { useThemeStore } from '@/lib/theme-store';
 import { t } from '@/lib/i18n';
+import { validateImageUpload } from '@/lib/upload-validation';
 
 export default function DreamsPage() {
   const dreamItems = useLifeOSStore((s) => s.dreamItems);
@@ -20,7 +21,8 @@ export default function DreamsPage() {
     goal:        { label: t(locale, 'dreams', 'goal'),        color: 'text-purple-400', bg: 'bg-purple-500/10 border border-purple-500/20' },
     experience:  { label: t(locale, 'dreams', 'experience'),  color: 'text-emerald-400', bg: 'bg-emerald-500/10 border border-emerald-500/20' },
     quote:       { label: t(locale, 'dreams', 'quote'),       color: 'text-amber-400',  bg: 'bg-amber-500/10 border border-amber-500/20' },
-    material:    { label: t(locale, 'dreams', 'material'),    color: 'text-rose-400',   bg: 'bg-rose-500/10 border border-rose-500/20' },
+    object:      { label: t(locale, 'dreams', 'object'),      color: 'text-rose-400',   bg: 'bg-rose-500/10 border border-rose-500/20' },
+    image:       { label: t(locale, 'dreams', 'image'),       color: 'text-sky-400',    bg: 'bg-sky-500/10 border border-sky-500/20' },
   };
 
   const [showModal, setShowModal] = useState(false);
@@ -38,9 +40,9 @@ export default function DreamsPage() {
     const file = e.target.files?.[0];
     if (!file) return;
     
-    // Limit to 800KB to prevent localStorage overflow
-    if (file.size > 800 * 1024) {
-      alert(t(locale, 'settings', 'storageDesc') + '\n\nFile is too large! Please upload an image smaller than 800KB.');
+    const validation = validateImageUpload(file);
+    if (!validation.ok) {
+      alert(validation.error);
       e.target.value = '';
       return;
     }

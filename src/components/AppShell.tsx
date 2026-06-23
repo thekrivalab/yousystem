@@ -3,6 +3,8 @@
 import { usePathname } from "next/navigation";
 import { ConditionalSidebar } from "@/components/ConditionalSidebar";
 import { Sidebar } from "@/components/Sidebar";
+import { DailyHabitSync } from "@/components/DailyHabitSync";
+import { VaultUnlockPrompt } from "@/components/VaultUnlockPrompt";
 import { SupabaseStorageSync } from "@/components/SupabaseStorageSync";
 
 const PUBLIC_ROUTES = ["/login", "/register", "/auth/callback"];
@@ -17,6 +19,8 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
   return (
     <>
+      <DailyHabitSync />
+      <VaultUnlockPrompt />
       <SupabaseStorageSync />
       <div className="min-h-screen lg:flex">
         <aside className="hidden lg:block w-64 shrink-0 sticky top-0 h-screen z-30 bg-[var(--sidebar-bg)]">

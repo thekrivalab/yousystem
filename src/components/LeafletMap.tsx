@@ -5,6 +5,7 @@ import { MapContainer, TileLayer, GeoJSON, useMap } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
 import { CountrySidePanel } from './CountrySidePanel';
 import { statusColors } from '@/lib/map-constants';
+import { ATLAS_MAPPING_KEY } from '@/lib/storage-snapshot';
 import { useThemeStore } from '@/lib/theme-store';
 import { t } from '@/lib/i18n';
 
@@ -19,7 +20,7 @@ function useCountryStore() {
   const [localMapping, setLocalMapping] = useState<Record<string, string>>(() => {
     if (typeof window === 'undefined') return {};
     try {
-      const saved = localStorage.getItem('atlas-countries-mapping');
+      const saved = localStorage.getItem(ATLAS_MAPPING_KEY);
       if (saved) return JSON.parse(saved);
       // Migrate old data
       const old = JSON.parse(localStorage.getItem('atlas-countries') || '{}');
@@ -52,7 +53,7 @@ function useCountryStore() {
     setLocalMapping(prev => {
       const next = { ...prev, [code]: name };
       try {
-        localStorage.setItem('atlas-countries-mapping', JSON.stringify(next));
+        localStorage.setItem(ATLAS_MAPPING_KEY, JSON.stringify(next));
       } catch {}
       return next;
     });
