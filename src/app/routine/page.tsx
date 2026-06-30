@@ -13,6 +13,8 @@ import {
   Trash2,
   X,
 } from 'lucide-react';
+import { IconPicker } from '@/components/IconPicker';
+import { DeleteConfirmModal } from '@/components/DeleteConfirmModal';
 import { useRoutineStore } from '@/lib/routine-store';
 import { useLifeOSStore } from '@/lib/store';
 import { isHabitCompletedOnDate } from '@/lib/habit-daily';
@@ -22,6 +24,14 @@ import { t } from '@/lib/i18n';
 import type { RoutineBlock } from '@/lib/types';
 
 const PRESET_CATEGORIES = ['spiritual', 'work', 'learning', 'rest', 'social', 'personal', 'health'] as const;
+
+const ROUTINE_ICONS = ['⭐', '☀️', '☕', '💪', '📚', '💻', '🧘', '🌙', '💤', '🚿', '🍳', '🚗', '🏃', '💰'];
+
+const TIME_INTERVALS = Array.from({ length: 48 }, (_, i) => {
+  const h = Math.floor(i / 2).toString().padStart(2, '0');
+  const m = i % 2 === 0 ? '00' : '30';
+  return `${h}:${m}`;
+});
 
 const CATEGORY_STYLE: Record<string, { text: string; dot: string }> = {
   health: { text: 'text-emerald-500', dot: 'bg-emerald-500' },
@@ -79,6 +89,9 @@ export default function RoutinePage() {
   const [showAddModal, setShowAddModal] = useState(false);
   const [editingBlockId, setEditingBlockId] = useState<string | null>(null);
   const [notesDraft, setNotesDraft] = useState('');
+  
+  const [deleteId, setDeleteId] = useState<string | null>(null);
+  const [showResetModal, setShowResetModal] = useState(false);
 
   const [newTime, setNewTime] = useState('08:00');
   const [newTitle, setNewTitle] = useState('');
@@ -189,7 +202,7 @@ export default function RoutinePage() {
               {t(locale, 'routine', 'addRoutine')}
             </button>
             <button
-              onClick={resetToDefaults}
+              onClick={() => setShowResetModal(true)}
               className="ui-button-ghost"
               title={t(locale, 'common', 'back')}
             >
@@ -385,7 +398,7 @@ export default function RoutinePage() {
                   <div
                     onClick={(e) => {
                       e.stopPropagation();
-                      removeBlock(block.id);
+                      setDeleteId(block.id);
                     }}
                     className="p-1.5 rounded-md hover:bg-[var(--bg-surface)] text-[var(--fg-subtle)] hover:text-red-400 transition-colors"
                   >
@@ -445,7 +458,11 @@ export default function RoutinePage() {
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
                   <label className="ui-label">{t(locale, 'routine', 'time')}</label>
-                  <input type="time" value={newTime} onChange={(e) => setNewTime(e.target.value)} className="ui-input" />
+                  <select value={newTime} onChange={(e) => setNewTime(e.target.value)} className="ui-input">
+                    {TIME_INTERVALS.map((time) => (
+                      <option key={time} value={time}>{time}</option>
+                    ))}
+                  </select>
                 </div>
                 <div>
                   <label className="ui-label">{t(locale, 'routine', 'duration')}</label>
@@ -453,15 +470,16 @@ export default function RoutinePage() {
                 </div>
               </div>
 
-              <div className="grid grid-cols-4 gap-3">
-                <div className="col-span-1">
-                  <label className="ui-label">{t(locale, 'routine', 'icon')}</label>
-                  <input type="text" value={newIcon} onChange={(e) => setNewIcon(e.target.value)} className="ui-input text-center text-xl" maxLength={4} />
-                </div>
-                <div className="col-span-3">
-                  <label className="ui-label">{t(locale, 'common', 'title')}</label>
-                  <input type="text" value={newTitle} onChange={(e) => setNewTitle(e.target.value)} className="ui-input" placeholder="Ex: Meditação" required />
-                </div>
+              <IconPicker
+                label={t(locale, 'routine', 'icon')}
+                value={newIcon}
+                onChange={setNewIcon}
+                options={ROUTINE_ICONS}
+              />
+              
+              <div>
+                <label className="ui-label">{t(locale, 'common', 'title')}</label>
+                <input type="text" value={newTitle} onChange={(e) => setNewTitle(e.target.value)} className="ui-input" placeholder="Ex: Meditação" required />
               </div>
 
               <div>
@@ -537,6 +555,21 @@ export default function RoutinePage() {
           </div>
         </div>
       )}
+
+      <DeleteConfirmModal 
+        isOpen={!!deleteId} 
+        onCancel={() => setDeleteId(null)} 
+        onConfirm={() => { if (deleteId) removeBlock(deleteId); }} 
+        title={locale === 'pt' ? 'Deletar bloco?' : locale === 'es' ? '¿Eliminar bloque?' : 'Delete block?'}
+      />
+
+      <DeleteConfirmModal 
+        isOpen={showResetModal} 
+        onCancel={() => setShowResetModal(false)} 
+        onConfirm={() => { resetToDefaults(); setShowResetModal(false); }} 
+        title={locale === 'pt' ? 'Resetar rotina?' : locale === 'es' ? '¿Restablecer rutina?' : 'Reset routine?'}
+        description={locale === 'pt' ? 'Isto apagará sua rotina atual e restaurará a rotina padrão. Os dados serão perdidos.' : locale === 'es' ? 'Esto borrará tu rutina actual y restaurará la rutina predeterminada. Los datos se perderán.' : 'This will erase your current routine and restore the default one. Data will be lost.'}
+      />
     </div>
   );
 }

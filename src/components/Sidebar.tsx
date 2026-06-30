@@ -5,7 +5,7 @@ import Link from "next/link";
 import { 
   Zap, DollarSign, 
   HeartPulse, Briefcase, Camera, Heart, Trophy, LayoutDashboard, Globe, Map, ListTodo,
-  Settings, User, PlusSquare, FileText
+  Settings, User, PlusSquare, FileText, Film, BookOpen
 } from "lucide-react";
 import { useThemeStore } from "@/lib/theme-store";
 import { t } from "@/lib/i18n";
@@ -45,6 +45,8 @@ export const navCategories = [
       { nameKey: "memories", href: "/memories", icon: Camera },
       { nameKey: "relationships", href: "/relationships", icon: Heart },
       { nameKey: "documents", href: "/documents", icon: FileText },
+      { nameKey: "movies", href: "/movies", icon: Film },
+      { nameKey: "library", href: "/library", icon: BookOpen },
     ]
   }
 ];

@@ -6,6 +6,7 @@ import { useLifeOSStore } from '@/lib/store';
 import { useThemeStore } from '@/lib/theme-store';
 import { Habit } from '@/lib/types';
 import { IconPicker } from '@/components/IconPicker';
+import { DeleteConfirmModal } from '@/components/DeleteConfirmModal';
 
 const HABIT_ICON_OPTIONS = ['⭐', '🔥', '💪', '🧘', '📚', '🏃', '💧', '🧼', '🎯', '🛏️', '🍎', '✍️', '⚡', '☀️'];
 
@@ -19,6 +20,7 @@ export default function HabitsPage() {
 
   const [showModal, setShowModal] = useState(false);
   const [editingHabitId, setEditingHabitId] = useState<string | null>(null);
+  const [deleteId, setDeleteId] = useState<string | null>(null);
 
   const [name, setName] = useState('');
   const [icon, setIcon] = useState('⭐');
@@ -69,7 +71,7 @@ export default function HabitsPage() {
             <button onClick={(e) => handleEditClick(e, habit)} className="w-8 h-8 rounded-lg border border-[var(--border)] flex items-center justify-center transition-all hover:border-blue-500 text-[var(--fg-subtle)] hover:text-blue-500">
               <Pencil size={14} />
             </button>
-            <button onClick={(e) => { e.stopPropagation(); removeHabit(habit.id); }} className="w-8 h-8 rounded-lg border border-[var(--border)] flex items-center justify-center transition-all hover:border-red-500 text-[var(--fg-subtle)] hover:text-red-500">
+            <button onClick={(e) => { e.stopPropagation(); setDeleteId(habit.id); }} className="w-8 h-8 rounded-lg border border-[var(--border)] flex items-center justify-center transition-all hover:border-red-500 text-[var(--fg-subtle)] hover:text-red-500">
               <Trash2 size={14} />
             </button>
           </div>
@@ -170,6 +172,13 @@ export default function HabitsPage() {
           </div>
         </div>
       )}
+      
+      <DeleteConfirmModal 
+        isOpen={!!deleteId} 
+        onCancel={() => setDeleteId(null)} 
+        onConfirm={() => { if (deleteId) removeHabit(deleteId); }} 
+        title={locale === 'pt' ? 'Deletar hábito?' : locale === 'es' ? '¿Eliminar hábito?' : 'Delete habit?'}
+      />
     </div>
   );
 }

@@ -184,6 +184,7 @@ export const ACHIEVEMENT_CATEGORIES = [
   'finance',
   'habits',
   'projects',
+  'custom',
 ] as const;
 
 export type AchievementCategory = (typeof ACHIEVEMENT_CATEGORIES)[number];
@@ -194,6 +195,7 @@ export interface Achievement {
   description: string;
   icon: string;
   category: AchievementCategory;
+  customCategory?: string; // free-form category name when category === 'custom'
   unlockedAt?: string;
   xpReward: number;
   isUnlocked: boolean;
@@ -250,6 +252,8 @@ export interface UserProfile {
   bio?: string;
   timezone?: string;
   avatarUrl?: string;
+  height?: number;   // cm
+  sex?: 'male' | 'female' | 'other';
   scores: {
     travel: number;
     finance: number;
@@ -281,6 +285,8 @@ export interface PersonalDocument {
   expiryDate?: string;
   notes?: string;
   fileUrl?: string;
+  fileData?: string;  // base64 for PDF/image uploads
+  fileName?: string;
 }
 
 // ─── DAILY ROUTINE ────────────────────────────────────────────────────────────
@@ -303,4 +309,21 @@ export interface DailyLog {
   completedIds: string[];
   notes?: string;
   mood?: 1 | 2 | 3 | 4 | 5;
+}
+
+// ─── MOVIES ───────────────────────────────────────────────────────────────────
+export type MovieStatus = 'watchlist' | 'watching' | 'watched';
+
+export interface Movie {
+  id: string;
+  title: string;
+  year?: number;
+  director?: string;
+  posterUrl?: string;   // external URL or base64
+  rating?: number;      // 0.5 to 5 (half-star support)
+  status: MovieStatus;
+  review?: string;
+  genres: string[];
+  watchedAt?: string;
+  isFavorite?: boolean;
 }

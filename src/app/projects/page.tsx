@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { Briefcase, CheckCircle2, Circle, Plus, X, Trash2, Pencil } from 'lucide-react';
+import { DeleteConfirmModal } from '@/components/DeleteConfirmModal';
 import { useLifeOSStore } from '@/lib/store';
 import { Project } from '@/lib/types';
 import { useThemeStore } from '@/lib/theme-store';
@@ -20,6 +21,7 @@ export default function ProjectsPage() {
 
   const [showModal, setShowModal] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [deleteId, setDeleteId] = useState<string | null>(null);
 
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
@@ -119,7 +121,7 @@ export default function ProjectsPage() {
                         <Pencil size={14} />
                       </button>
                       <button
-                        onClick={() => removeProject(project.id)}
+                        onClick={() => setDeleteId(project.id)}
                         className="opacity-0 group-hover:opacity-100 transition-opacity p-1.5 rounded hover:bg-rose-500/10 text-rose-400"
                       >
                         <Trash2 size={14} />
@@ -203,7 +205,7 @@ export default function ProjectsPage() {
                       <Pencil size={14} />
                     </button>
                     <button
-                      onClick={() => removeProject(project.id)}
+                      onClick={() => setDeleteId(project.id)}
                       className="opacity-0 group-hover:opacity-100 transition-opacity p-1.5 rounded hover:bg-rose-500/10 text-rose-400 shrink-0"
                     >
                       <Trash2 size={14} />
@@ -275,6 +277,12 @@ export default function ProjectsPage() {
           </div>
         </div>
       )}
+      <DeleteConfirmModal 
+        isOpen={!!deleteId} 
+        onCancel={() => setDeleteId(null)} 
+        onConfirm={() => { if (deleteId) removeProject(deleteId); }} 
+        title={locale === 'pt' ? 'Deletar projeto?' : locale === 'es' ? '¿Eliminar proyecto?' : 'Delete project?'}
+      />
     </div>
   );
 }

@@ -6,6 +6,7 @@ import { Sidebar } from "@/components/Sidebar";
 import { DailyHabitSync } from "@/components/DailyHabitSync";
 import { VaultUnlockPrompt } from "@/components/VaultUnlockPrompt";
 import { SupabaseStorageSync } from "@/components/SupabaseStorageSync";
+import { XpToastContainer } from "@/components/XpToast";
 
 const PUBLIC_ROUTES = ["/login", "/register", "/auth/callback"];
 
@@ -22,6 +23,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       <DailyHabitSync />
       <VaultUnlockPrompt />
       <SupabaseStorageSync />
+      <XpToastContainer />
       <div className="min-h-screen lg:flex">
         <aside className="hidden lg:block w-64 shrink-0 sticky top-0 h-screen z-30 bg-[var(--sidebar-bg)]">
           <Sidebar />

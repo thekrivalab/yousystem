@@ -23,6 +23,8 @@ export const translations = {
       dashboard: 'Dashboard',
       settings: 'Settings',
       documents: 'Documents',
+      movies: 'Movies',
+      library: 'Library',
     },
     // Common actions
     common: {
@@ -355,6 +357,8 @@ export const translations = {
       dashboard: 'Painel',
       settings: 'Configurações',
       documents: 'Documentos',
+      movies: 'Filmes',
+      library: 'Biblioteca',
     },
     common: {
       save: 'Salvar',
@@ -681,6 +685,8 @@ export const translations = {
       dashboard: 'Panel',
       settings: 'Configuración',
       documents: 'Documentos',
+      movies: 'Películas',
+      library: 'Biblioteca',
     },
     common: {
       save: 'Guardar',

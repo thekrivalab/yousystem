@@ -111,32 +111,6 @@ export default function HomeDashboard() {
               </div>
             </div>
 
-            <div className="ui-card p-5">
-              <div className="flex items-center justify-between mb-4">
-                <h2 className="text-lg font-semibold flex items-center gap-2" style={{ color: 'var(--fg-base)' }}>
-                  <Trophy size={20} className="text-amber-500" />
-                  {locale === 'pt' ? 'Conquistas ativas' : locale === 'es' ? 'Logros activos' : 'Active Achievements'}
-                </h2>
-                <Link href="/conquistas" className="text-xs flex items-center gap-1" style={{ color: 'var(--fg-subtle)' }}>
-                  {locale === 'pt' ? 'Ver todas' : locale === 'es' ? 'Ver todas' : 'View all'} <ArrowRight size={12} />
-                </Link>
-              </div>
-              <div className="space-y-4">
-                {activeGoals.length === 0 ? (
-                  <EmptyCard title={locale === 'pt' ? 'Sem conquistas ainda' : locale === 'es' ? 'Aún no hay logros' : 'No achievements yet'} description={locale === 'pt' ? 'Crie sua primeira conquista para começar.' : locale === 'es' ? 'Crea tu primer logro para empezar.' : 'Create your first achievement to start building momentum.'} />
-                ) : activeGoals.map((goal) => (
-                  <div key={goal.id}>
-                    <div className="flex justify-between items-center mb-1">
-                      <span className="text-sm font-medium" style={{ color: 'var(--fg-base)' }}>{goal.title}</span>
-                      <span className="text-xs" style={{ color: 'var(--fg-subtle)' }}>{goal.progress}%</span>
-                    </div>
-                    <div className="h-1.5 w-full rounded-full overflow-hidden" style={{ backgroundColor: 'var(--bg-elevated)' }}>
-                      <div className="h-full bg-purple-500" style={{ width: `${goal.progress}%` }} />
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
 
             <div className="ui-card p-5">
               <h2 className="text-lg font-semibold flex items-center gap-2 mb-4" style={{ color: 'var(--fg-base)' }}>

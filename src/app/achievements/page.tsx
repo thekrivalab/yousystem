@@ -1,6 +1,6 @@
 "use client";
 
-import { Trophy, Lock, Star, Plus, X, Trash2, Pencil } from 'lucide-react';
+import { Trophy, Lock, Star, Plus, X, Trash2, Pencil, CheckCircle2 } from 'lucide-react';
 import { useState } from 'react';
 import { useLifeOSStore } from '@/lib/store';
 import {
@@ -11,6 +11,7 @@ import {
 } from '@/lib/types';
 import { useThemeStore } from '@/lib/theme-store';
 import { IconPicker } from '@/components/IconPicker';
+import { DeleteConfirmModal } from '@/components/DeleteConfirmModal';
 
 const ACHIEVEMENT_ICON_OPTIONS = ['🏆', '🥇', '🎖️', '⭐', '🌟', '🎉', '🚀', '💎', '🧠', '🔥', '👑', '🏅', '🌈', '💪'];
 
@@ -35,6 +36,8 @@ export default function AchievementsPage() {
 
   const [showModal, setShowModal] = useState(false);
   const [editingAchievementId, setEditingAchievementId] = useState<string | null>(null);
+  const [unlockConfirmId, setUnlockConfirmId] = useState<string | null>(null);
+  const [deleteId, setDeleteId] = useState<string | null>(null);
 
   const [newAchievement, setNewAchievement] = useState<AchievementInput>(DEFAULT_ACHIEVEMENT);
 
@@ -104,7 +107,14 @@ export default function AchievementsPage() {
           {achievements.map(achievement => (
             <div 
               key={achievement.id} 
-              onClick={() => toggleAchievement(achievement.id)}
+              onClick={() => {
+                if (!achievement.isUnlocked) {
+                  setUnlockConfirmId(achievement.id);
+                } else {
+                  // Optional: toggle off directly or do nothing. User said "mudar estado para desbloqueado", implying one-way or simple toggle. We will just toggle if already unlocked for flexibility, but confirmation only to unlock.
+                  toggleAchievement(achievement.id);
+                }
+              }}
               className={`relative p-6 transition-all cursor-pointer ${
                 achievement.isUnlocked 
                   ? 'ui-card' 
@@ -127,7 +137,7 @@ export default function AchievementsPage() {
                   <Pencil size={16} />
                 </button>
                 <button 
-                  onClick={(e) => { e.stopPropagation(); removeAchievement(achievement.id); }}
+                  onClick={(e) => { e.stopPropagation(); setDeleteId(achievement.id); }}
                   className="text-[var(--fg-subtle)] hover:text-red-500 transition-colors"
                 >
                   <Trash2 size={16} />
@@ -260,6 +270,50 @@ export default function AchievementsPage() {
           </div>
         </div>
       )}
+
+      {unlockConfirmId && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 backdrop-blur-sm" style={{ backgroundColor: 'rgba(0,0,0,0.75)' }}>
+          <div className="ui-card w-full max-w-sm p-6 shadow-2xl" style={{ animation: 'modal-pop 0.18s ease-out' }}>
+            <div className="flex items-start justify-between mb-4">
+              <div className="w-10 h-10 rounded-full flex items-center justify-center shrink-0" style={{ backgroundColor: 'color-mix(in srgb, var(--accent) 15%, transparent)' }}>
+                <CheckCircle2 size={20} style={{ color: 'var(--accent)' }} />
+              </div>
+              <button onClick={(e) => { e.stopPropagation(); setUnlockConfirmId(null); }} className="text-[var(--fg-subtle)] hover:text-[var(--fg-base)] transition-colors">
+                <X size={18} />
+              </button>
+            </div>
+            <h3 className="text-base font-bold text-[var(--fg-base)] mb-1">
+              {locale === 'pt' ? 'Tem certeza?' : locale === 'es' ? '¿Estás seguro?' : 'Are you sure?'}
+            </h3>
+            <p className="text-sm text-[var(--fg-subtle)] mb-6 leading-relaxed">
+              {locale === 'pt' ? 'Você está prestes a desbloquear esta medalha e ganhar o XP correspondente.' : locale === 'es' ? 'Estás a punto de desbloquear esta medalla y ganar la XP correspondiente.' : 'You are about to unlock this badge and earn the corresponding XP.'}
+            </p>
+            <div className="flex gap-3">
+              <button onClick={(e) => { e.stopPropagation(); setUnlockConfirmId(null); }} className="flex-1 ui-button-ghost">
+                {locale === 'pt' ? 'Cancelar' : locale === 'es' ? 'Cancelar' : 'Cancel'}
+              </button>
+              <button
+                onClick={(e) => { 
+                  e.stopPropagation();
+                  toggleAchievement(unlockConfirmId); 
+                  setUnlockConfirmId(null); 
+                }}
+                className="flex-1 py-2 rounded-lg text-sm font-semibold transition-colors"
+                style={{ backgroundColor: 'var(--accent)', color: 'var(--bg-base)' }}
+              >
+                {locale === 'pt' ? 'Desbloquear' : locale === 'es' ? 'Desbloquear' : 'Unlock'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      <DeleteConfirmModal 
+        isOpen={!!deleteId} 
+        onCancel={() => setDeleteId(null)} 
+        onConfirm={() => { if (deleteId) removeAchievement(deleteId); }} 
+        title={locale === 'pt' ? 'Deletar medalha?' : locale === 'es' ? '¿Eliminar medalla?' : 'Delete achievement?'}
+      />
     </div>
   );
 }

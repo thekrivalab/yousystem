@@ -7,7 +7,7 @@ import { syncAllHabitsDailyState, syncHabitDailyState } from '@/lib/habit-daily'
 import { 
   Goal, GoalInput, Habit, FinancialGoal, Transaction, Book, Course, 
   Language, HealthEntry, Project, Memory, Relationship, 
-  Achievement, AchievementInput, DreamItem, UserProfile, PlanningEvent, PersonalDocument
+  Achievement, AchievementInput, DreamItem, UserProfile, PlanningEvent, PersonalDocument, Movie
 } from './types';
 import { BucketListItem } from './types';
 
@@ -46,6 +46,7 @@ interface LifeOSState {
   bucketListItems: BucketListItem[];
   planningEvents: PlanningEvent[];
   documents: PersonalDocument[];
+  movies: Movie[];
 
   // Actions
   addXp: (amount: number) => void;
@@ -117,7 +118,13 @@ interface LifeOSState {
 
   // Documents Actions
   addDocument: (doc: Omit<PersonalDocument, 'id'>) => void;
+  updateDocument: (id: string, updates: Partial<PersonalDocument>) => void;
   removeDocument: (id: string) => void;
+
+  // Movies Actions
+  addMovie: (movie: Omit<Movie, 'id'>) => void;
+  updateMovie: (id: string, updates: Partial<Movie>) => void;
+  removeMovie: (id: string) => void;
 
   // Achievements Actions
   addAchievement: (achievement: AchievementInput) => void;
@@ -161,11 +168,25 @@ export const useLifeOSStore = create<LifeOSState>()(
       bucketListItems: [],
       planningEvents: [],
       documents: [],
+      movies: [],
 
       addXp: (amount) => {
         set((state) => {
-          const newXp = state.user.totalXp + amount;
-          const newLevel = Math.floor(newXp / 1000) + 1;
+          const newXp = Math.max(0, state.user.totalXp + amount);
+          // sqrt-based leveling: level = floor(sqrt(xp/50)) + 1
+          const newLevel = Math.floor(Math.sqrt(newXp / 50)) + 1;
+          const prevLevel = state.user.level;
+
+          // Dispatch browser events for UI feedback (non-React)
+          if (typeof window !== 'undefined') {
+            if (amount > 0) {
+              window.dispatchEvent(new CustomEvent('xp-gained', { detail: amount }));
+            }
+            if (newLevel > prevLevel) {
+              window.dispatchEvent(new CustomEvent('level-up', { detail: newLevel }));
+            }
+          }
+
           return {
             user: {
               ...state.user,
@@ -628,8 +649,34 @@ export const useLifeOSStore = create<LifeOSState>()(
         get().addXp(25);
       },
 
+      updateDocument: (id, updates) => {
+        set((state) => ({
+          documents: state.documents.map(d => d.id === id ? { ...d, ...updates } : d)
+        }));
+      },
+
       removeDocument: (id) => {
         set((state) => ({ documents: state.documents.filter(d => d.id !== id) }));
+      },
+
+      // Movies Actions
+      addMovie: (movie) => {
+        const newMovie: Movie = {
+          ...movie,
+          id: `mv_${Date.now()}`
+        };
+        set((state) => ({ movies: [...state.movies, newMovie] }));
+        get().addXp(10);
+      },
+
+      updateMovie: (id, updates) => {
+        set((state) => ({
+          movies: state.movies.map(m => m.id === id ? { ...m, ...updates } : m)
+        }));
+      },
+
+      removeMovie: (id) => {
+        set((state) => ({ movies: state.movies.filter(m => m.id !== id) }));
       },
 
       // Achievements Actions
@@ -709,7 +756,8 @@ export const useLifeOSStore = create<LifeOSState>()(
         dreamItems: state.dreamItems,
         bucketListItems: state.bucketListItems,
         planningEvents: state.planningEvents,
-        documents: state.documents
+        documents: state.documents,
+        movies: state.movies,
       }),
     }
   )

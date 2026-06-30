@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { HeartPulse, Activity, Droplets, Moon, Plus, X, Zap, Trash2, Pencil } from 'lucide-react';
+import { DeleteConfirmModal } from '@/components/DeleteConfirmModal';
 import { useLifeOSStore } from '@/lib/store';
 import { useThemeStore } from '@/lib/theme-store';
 import { t } from '@/lib/i18n';
@@ -17,6 +18,7 @@ export default function HealthPage() {
 
   const [showModal, setShowModal] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [deleteId, setDeleteId] = useState<string | null>(null);
 
   const [weight, setWeight] = useState('');
   const [bodyFat, setBodyFat] = useState('');
@@ -136,7 +138,7 @@ export default function HealthPage() {
                         <Pencil size={16} />
                       </button>
                       <button
-                        onClick={() => removeHealthEntry(entry.id)}
+                        onClick={() => setDeleteId(entry.id)}
                         className="p-1.5 rounded hover:bg-rose-500/10 text-rose-400"
                       >
                         <Trash2 size={16} />
@@ -205,6 +207,12 @@ export default function HealthPage() {
           </div>
         </div>
       )}
+      <DeleteConfirmModal 
+        isOpen={!!deleteId} 
+        onCancel={() => setDeleteId(null)} 
+        onConfirm={() => { if (deleteId) removeHealthEntry(deleteId); }} 
+        title={locale === 'pt' ? 'Deletar registro?' : locale === 'es' ? '¿Eliminar registro?' : 'Delete log?'}
+      />
     </div>
   );
 }

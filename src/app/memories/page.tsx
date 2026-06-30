@@ -2,6 +2,7 @@
 
 import { useState, useRef } from 'react';
 import { MapPin, Plus, X, Trash2, Pencil, Image as ImageIcon } from 'lucide-react';
+import { DeleteConfirmModal } from '@/components/DeleteConfirmModal';
 import { useLifeOSStore } from '@/lib/store';
 import { Memory } from '@/lib/types';
 import { useThemeStore } from '@/lib/theme-store';
@@ -24,6 +25,9 @@ export default function MemoriesPage() {
   const [emotion, setEmotion] = useState('🌟');
   const [tags, setTags] = useState('');
   const [imageUrl, setImageUrl] = useState('');
+  const [date, setDate] = useState(new Date().toISOString().slice(0, 10));
+
+  const [deleteId, setDeleteId] = useState<string | null>(null);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -54,6 +58,7 @@ export default function MemoriesPage() {
     setEmotion(item.emotion as any);
     setTags(item.tags.join(', '));
     setImageUrl(item.imageUrl || '');
+    setDate(item.date ? new Date(item.date).toISOString().slice(0, 10) : new Date().toISOString().slice(0, 10));
     setShowModal(true);
   };
 
@@ -66,6 +71,7 @@ export default function MemoriesPage() {
     setImageUrl('');
     setEmotion('🌟');
     setType('travel');
+    setDate(new Date().toISOString().slice(0, 10));
     setShowModal(false);
   };
 
@@ -77,6 +83,7 @@ export default function MemoriesPage() {
       emotion: emotion as any,
       tags: tags.split(',').map(tag => tag.trim()).filter(Boolean),
       imageUrl: imageUrl || undefined,
+      date: new Date(date).toISOString(),
     };
     if (editingId) {
       updateMemory(editingId, payload);
@@ -123,7 +130,7 @@ export default function MemoriesPage() {
                       <Pencil size={16} />
                     </button>
                     <button
-                      onClick={() => removeMemory(memory.id)}
+                      onClick={() => setDeleteId(memory.id)}
                       className="p-2 rounded bg-[var(--bg-elevated)] hover:bg-rose-500/10 hover:text-rose-400 text-[var(--fg-muted)] transition-colors"
                     >
                       <Trash2 size={16} />
@@ -249,6 +256,10 @@ export default function MemoriesPage() {
                 <label className="ui-label">{locale === 'pt' ? 'Tags (separadas por vírgula)' : locale === 'es' ? 'Etiquetas (separadas por coma)' : 'Tags (comma-sep)'}</label>
                 <input type="text" value={tags} onChange={e => setTags(e.target.value)} placeholder={locale === 'pt' ? 'tag1, tag2, tag3' : locale === 'es' ? 'tag1, tag2, tag3' : 'tag1, tag2, tag3'} className="ui-input focus:ring-[var(--accent)]" />
               </div>
+              <div>
+                <label className="ui-label">{locale === 'pt' ? 'Data' : locale === 'es' ? 'Fecha' : 'Date'}</label>
+                <input type="date" value={date} onChange={e => setDate(e.target.value)} className="ui-input focus:ring-[var(--accent)]" />
+              </div>
               <div className="flex gap-3 justify-end pt-2">
                 <button type="button" onClick={resetForm} className="ui-button-ghost">{t(locale, 'common', 'cancel')}</button>
                 <button type="submit" className="ui-button-primary">{t(locale, 'common', 'save')}</button>
@@ -257,6 +268,12 @@ export default function MemoriesPage() {
           </div>
         </div>
       )}
+      <DeleteConfirmModal 
+        isOpen={!!deleteId} 
+        onCancel={() => setDeleteId(null)} 
+        onConfirm={() => { if (deleteId) removeMemory(deleteId); }} 
+        title={locale === 'pt' ? 'Deletar memória?' : locale === 'es' ? '¿Eliminar recuerdo?' : 'Delete memory?'}
+      />
     </div>
   );
 }

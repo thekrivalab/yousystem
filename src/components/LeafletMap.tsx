@@ -119,6 +119,19 @@ export default function LeafletMap() {
   const [tooltip, setTooltip] = useState({ visible: false, name: '', x: 0, y: 0 });
   const { store, setCountryStatus } = useCountryStore();
   const storeRef = useRef(store);
+  const theme = useThemeStore(s => s.theme);
+  const [actualTheme, setActualTheme] = useState<'dark' | 'light'>('dark');
+
+  useEffect(() => {
+    if (theme === 'system') {
+      const isDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+      setActualTheme(isDark ? 'dark' : 'light');
+    } else {
+      setActualTheme(theme);
+    }
+  }, [theme]);
+
+  const isDark = actualTheme === 'dark';
 
   useEffect(() => {
     storeRef.current = store;
@@ -162,10 +175,10 @@ export default function LeafletMap() {
       fillColor: color,
       weight: 1,
       opacity: 1,
-      color: status === 'none' ? '#334155' : '#e2e8f0',
-      fillOpacity: status === 'none' ? 0.4 : 0.85,
+      color: status === 'none' ? (isDark ? '#334155' : '#cbd5e1') : (isDark ? '#e2e8f0' : '#475569'),
+      fillOpacity: status === 'none' ? (isDark ? 0.4 : 0.6) : 0.85,
     };
-  }, []);
+  }, [isDark]);
 
   const onEachFeature = useCallback((feature: any, layer: any) => {
     const name = getCountryName(feature);
@@ -173,7 +186,7 @@ export default function LeafletMap() {
 
     layer.on({
       mouseover: (e: any) => {
-        e.target.setStyle({ weight: 2, color: '#ffffff', fillOpacity: 0.9 });
+        e.target.setStyle({ weight: 2, color: isDark ? '#ffffff' : '#0f172a', fillOpacity: 0.9 });
         e.target.bringToFront();
         setTooltip({ visible: true, name, x: e.originalEvent.clientX, y: e.originalEvent.clientY });
       },
@@ -197,11 +210,17 @@ export default function LeafletMap() {
   const currentStatus = selectedCode ? (store[selectedCode]?.status || 'none') : 'none';
 
   return (
-    <div className="w-full h-full relative bg-[#0a0a0a] overflow-hidden">
+    <div className="w-full h-full relative overflow-hidden" style={{ backgroundColor: 'var(--bg-base)' }}>
       {tooltip.visible && tooltip.name && (
         <div
-          className="pointer-events-none fixed z-[9999] px-2.5 py-1.5 bg-[#111] border border-[#333] rounded-md text-xs font-medium text-white shadow-lg"
-          style={{ top: tooltip.y + 16, left: tooltip.x + 16 }}
+          className="pointer-events-none fixed z-[9999] px-2.5 py-1.5 rounded-md text-xs font-medium shadow-lg"
+          style={{ 
+            top: tooltip.y + 16, 
+            left: tooltip.x + 16,
+            backgroundColor: 'var(--bg-elevated)',
+            border: '1px solid var(--border)',
+            color: 'var(--fg-base)'
+          }}
         >
           {tooltip.name}
         </div>
@@ -210,7 +229,7 @@ export default function LeafletMap() {
       <MapContainer
         center={[20, 0]}
         zoom={2}
-        style={{ height: '100%', width: '100%', background: '#0a0a0a' }}
+        style={{ height: '100%', width: '100%', background: 'var(--bg-base)' }}
         minZoom={2}
         maxBounds={[[-90, -180], [90, 180]]}
         maxBoundsViscosity={1.0}
@@ -218,7 +237,8 @@ export default function LeafletMap() {
       >
         <MapResizer />
         <TileLayer
-          url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
+          key={actualTheme}
+          url={`https://{s}.basemaps.cartocdn.com/${isDark ? 'dark_all' : 'light_all'}/{z}/{x}/{y}{r}.png`}
           attribution='&copy; OpenStreetMap &copy; CARTO'
         />
         {geoData && (
@@ -233,7 +253,7 @@ export default function LeafletMap() {
 
       {geoLoading && !geoError && (
         <div className="absolute inset-0 z-[380] flex items-center justify-center pointer-events-none">
-          <div className="rounded-xl border border-[#1f1f1f] bg-[#0a0a0a]/90 px-4 py-3 text-sm text-zinc-500 shadow-lg">
+          <div className="rounded-xl border px-4 py-3 text-sm shadow-lg backdrop-blur-sm" style={{ backgroundColor: 'var(--bg-surface)', borderColor: 'var(--border)', color: 'var(--fg-subtle)' }}>
             Carregando países...
           </div>
         </div>
@@ -241,14 +261,14 @@ export default function LeafletMap() {
 
       {geoError && (
         <div className="absolute inset-0 z-[380] flex items-center justify-center pointer-events-none">
-          <div className="rounded-xl border border-[#2a2a2a] bg-[#0a0a0a]/90 px-4 py-3 text-sm text-zinc-300 shadow-lg">
+          <div className="rounded-xl border px-4 py-3 text-sm shadow-lg backdrop-blur-sm" style={{ backgroundColor: 'var(--bg-surface)', borderColor: 'var(--border)', color: 'var(--fg-base)' }}>
             Failed to load countries.
           </div>
         </div>
       )}
 
-      <div className="absolute bottom-20 left-4 md:bottom-6 md:left-6 z-[430] bg-[#0a0a0a]/95 backdrop-blur-sm border border-[#1f1f1f] rounded-xl p-4 w-44 shadow-lg">
-        <h4 className="text-[10px] font-bold uppercase tracking-wider text-zinc-400 mb-3">Legenda</h4>
+      <div className="absolute bottom-20 left-4 md:bottom-6 md:left-6 z-[430] backdrop-blur-sm border rounded-xl p-4 w-44 shadow-lg" style={{ backgroundColor: 'var(--bg-surface)', borderColor: 'var(--border)' }}>
+        <h4 className="text-[10px] font-bold uppercase tracking-wider mb-3" style={{ color: 'var(--fg-subtle)' }}>Legenda</h4>
         <div className="space-y-2">
           {[
             ['living',        'Morei / Moro'],
@@ -259,16 +279,16 @@ export default function LeafletMap() {
           ].map(([key, label]) => (
             <div key={key} className="flex items-center gap-2">
               <div className="w-2.5 h-2.5 rounded-sm shrink-0" style={{ backgroundColor: statusColors[key] }} />
-              <span className="text-xs text-zinc-300">{label}</span>
+              <span className="text-xs" style={{ color: 'var(--fg-muted)' }}>{label}</span>
             </div>
           ))}
         </div>
       </div>
 
-      <div className="absolute top-16 right-4 md:top-4 md:right-4 z-[430] bg-[#0a0a0a]/80 backdrop-blur-sm border border-[#1f1f1f] rounded-lg px-3 py-2 max-w-[200px] md:max-w-[260px]">
-        <p className="text-xs text-zinc-500">Click a country to set a status</p>
+      <div className="absolute top-16 right-4 md:top-4 md:right-4 z-[430] backdrop-blur-sm border rounded-lg px-3 py-2 max-w-[200px] md:max-w-[260px]" style={{ backgroundColor: 'var(--bg-surface)', borderColor: 'var(--border)' }}>
+        <p className="text-xs" style={{ color: 'var(--fg-subtle)' }}>Click a country to set a status</p>
         {selectedName && (
-          <p className="text-[11px] mt-1 text-zinc-400 truncate">
+          <p className="text-[11px] mt-1 truncate" style={{ color: 'var(--fg-muted)' }}>
             Selected: {selectedName} • {currentStatus.replace('_', ' ')}
           </p>
         )}
