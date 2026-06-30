@@ -6,6 +6,12 @@ export async function createClient() {
   let supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
   let supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY || '';
 
+  supabaseUrl = supabaseUrl.trim();
+  supabaseKey = supabaseKey.trim();
+
+  if (supabaseUrl === '[REDACTED]') supabaseUrl = '';
+  if (supabaseKey === '[REDACTED]') supabaseKey = '';
+
   try {
     new URL(supabaseUrl);
   } catch (e) {
