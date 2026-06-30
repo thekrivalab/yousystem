@@ -75,7 +75,7 @@ export interface FinancialGoal {
 }
 
 // ─── LEARNING ─────────────────────────────────────────────────────────────────
-export type LearningStatus = 'active' | 'completed' | 'wishlist' | 'paused';
+export type LearningStatus = 'active' | 'completed' | 'wishlist' | 'paused' | 'not_started' | 'in_progress';
 
 export interface Book {
   id: string;
