@@ -47,8 +47,27 @@ export async function updateSession(request: NextRequest) {
     request,
   });
 
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-  const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!;
+  let supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
+  let supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY || '';
+
+  try {
+    new URL(supabaseUrl);
+  } catch (e) {
+    if (supabaseUrl && !supabaseUrl.startsWith('http')) {
+      supabaseUrl = `https://${supabaseUrl}`;
+      try {
+        new URL(supabaseUrl);
+      } catch (err) {
+        supabaseUrl = 'https://placeholder.supabase.co';
+      }
+    } else {
+      supabaseUrl = 'https://placeholder.supabase.co';
+    }
+  }
+
+  if (!supabaseKey) {
+    supabaseKey = 'placeholder';
+  }
 
   const supabase = createServerClient(supabaseUrl, supabaseKey, {
     cookies: {
