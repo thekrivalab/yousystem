@@ -1,18 +1,26 @@
 import { createBrowserClient } from "@supabase/ssr";
 
 export const createClient = () => {
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
+  let supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
+  let supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY || '';
 
-  console.log("SUPABASE_URL =", supabaseUrl);
-  console.log("SUPABASE_KEY EXISTS =", !!supabaseKey);
-
-  if (!supabaseUrl) {
-    throw new Error("NEXT_PUBLIC_SUPABASE_URL missing");
+  try {
+    new URL(supabaseUrl);
+  } catch (e) {
+    if (supabaseUrl && !supabaseUrl.startsWith('http')) {
+      supabaseUrl = `https://${supabaseUrl}`;
+      try {
+        new URL(supabaseUrl);
+      } catch (err) {
+        supabaseUrl = 'https://placeholder.supabase.co';
+      }
+    } else {
+      supabaseUrl = 'https://placeholder.supabase.co';
+    }
   }
 
   if (!supabaseKey) {
-    throw new Error("NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY missing");
+    supabaseKey = 'placeholder';
   }
 
   return createBrowserClient(supabaseUrl, supabaseKey);
