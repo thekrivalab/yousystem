@@ -27,11 +27,7 @@ const PRESET_CATEGORIES = ['spiritual', 'work', 'learning', 'rest', 'social', 'p
 
 const ROUTINE_ICONS = ['⭐', '☀️', '☕', '💪', '📚', '💻', '🧘', '🌙', '💤', '🚿', '🍳', '🚗', '🏃', '💰'];
 
-const TIME_INTERVALS = Array.from({ length: 48 }, (_, i) => {
-  const h = Math.floor(i / 2).toString().padStart(2, '0');
-  const m = i % 2 === 0 ? '00' : '30';
-  return `${h}:${m}`;
-});
+
 
 const CATEGORY_STYLE: Record<string, { text: string; dot: string }> = {
   health: { text: 'text-emerald-500', dot: 'bg-emerald-500' },
@@ -94,11 +90,11 @@ export default function RoutinePage() {
   const [showResetModal, setShowResetModal] = useState(false);
 
   const [newTime, setNewTime] = useState('08:00');
+  const [newEndTime, setNewEndTime] = useState('08:30');
   const [newTitle, setNewTitle] = useState('');
   const [newDesc, setNewDesc] = useState('');
   const [newIcon, setNewIcon] = useState('⭐');
   const [newCategory, setNewCategory] = useState('personal');
-  const [newDuration, setNewDuration] = useState(30);
   const [newDayTypes, setNewDayTypes] = useState<RoutineBlock['dayTypes']>(['weekday']);
 
   const dayType = getDayType(selectedDate);
@@ -120,11 +116,11 @@ export default function RoutinePage() {
 
   function resetForm() {
     setNewTime('08:00');
+    setNewEndTime('08:30');
     setNewTitle('');
     setNewDesc('');
     setNewIcon('⭐');
     setNewCategory('personal');
-    setNewDuration(30);
     setNewDayTypes(['weekday']);
     setEditingBlockId(null);
     setShowAddModal(false);
@@ -136,12 +132,12 @@ export default function RoutinePage() {
 
     const payload = {
       time: newTime,
+      endTime: newEndTime,
       title: newTitle.trim(),
       description: newDesc.trim() || undefined,
       icon: newIcon,
       category: normalizeCategory(newCategory) || 'personal',
       dayTypes: newDayTypes,
-      durationMin: newDuration,
     };
 
     if (editingBlockId) {
@@ -157,11 +153,21 @@ export default function RoutinePage() {
     e.stopPropagation();
     setEditingBlockId(block.id);
     setNewTime(block.time);
+    
+    let defaultEndTime = block.endTime || '';
+    if (!defaultEndTime && block.time && block.durationMin) {
+      const [h, m] = block.time.split(':').map(Number);
+      const totalM = h * 60 + m + block.durationMin;
+      const eh = Math.floor(totalM / 60) % 24;
+      const em = totalM % 60;
+      defaultEndTime = `${eh.toString().padStart(2, '0')}:${em.toString().padStart(2, '0')}`;
+    }
+    setNewEndTime(defaultEndTime);
+    
     setNewTitle(block.title);
     setNewDesc(block.description || '');
     setNewIcon(block.icon || '⭐');
     setNewCategory(block.category);
-    setNewDuration(block.durationMin);
     setNewDayTypes(block.dayTypes);
     setShowAddModal(true);
   }
@@ -361,9 +367,14 @@ export default function RoutinePage() {
                   {done ? <CheckCircle2 size={22} className="text-emerald-500" /> : <Circle size={22} style={{ color: 'var(--fg-subtle)' }} />}
                 </div>
 
-                <div className="flex flex-col items-center w-12 shrink-0">
-                  <span className="text-xs font-mono font-semibold" style={{ color: 'var(--fg-muted)' }}>
+                <div className="flex flex-col items-center w-16 shrink-0">
+                  <span className="text-xs font-mono font-semibold text-center" style={{ color: 'var(--fg-muted)' }}>
                     {block.time}
+                    {block.endTime && (
+                      <span className="block text-[10px] font-sans mt-0.5 leading-tight" style={{ color: 'var(--fg-subtle)' }}>
+                        {locale === 'pt' ? 'até ' : locale === 'es' ? 'hasta ' : 'to '}{block.endTime}
+                      </span>
+                    )}
                   </span>
                   <span className={`w-2 h-2 rounded-full mt-1 ${style.dot}`} />
                 </div>
@@ -381,11 +392,11 @@ export default function RoutinePage() {
                   )}
                 </div>
 
-                {block.durationMin > 0 && (
+                {!block.endTime && block.durationMin ? (
                   <span className="text-xs shrink-0" style={{ color: 'var(--fg-subtle)' }}>
                     {block.durationMin}min
                   </span>
-                )}
+                ) : null}
 
                 <span className={`text-[10px] font-bold uppercase tracking-wide shrink-0 ${style.text}`}>
                   {displayCategory(locale, block.category)}
@@ -458,15 +469,11 @@ export default function RoutinePage() {
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
                   <label className="ui-label">{t(locale, 'routine', 'time')}</label>
-                  <select value={newTime} onChange={(e) => setNewTime(e.target.value)} className="ui-input">
-                    {TIME_INTERVALS.map((time) => (
-                      <option key={time} value={time}>{time}</option>
-                    ))}
-                  </select>
+                  <input type="time" value={newTime} onChange={(e) => setNewTime(e.target.value)} className="ui-input" required />
                 </div>
                 <div>
-                  <label className="ui-label">{t(locale, 'routine', 'duration')}</label>
-                  <input type="number" min={0} value={newDuration} onChange={(e) => setNewDuration(Number(e.target.value))} className="ui-input" />
+                  <label className="ui-label">{locale === 'pt' ? 'Até' : locale === 'es' ? 'Hasta' : 'End Time'}</label>
+                  <input type="time" value={newEndTime} onChange={(e) => setNewEndTime(e.target.value)} className="ui-input" />
                 </div>
               </div>
 

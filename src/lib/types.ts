@@ -296,12 +296,13 @@ export type RoutineCategory = string;
 export interface RoutineBlock {
   id: string;
   time: string;
+  endTime?: string;
   title: string;
   description?: string;
   icon?: string;
   category: RoutineCategory;
   dayTypes: DayType[];
-  durationMin: number;
+  durationMin?: number;
 }
 
 export interface DailyLog {
